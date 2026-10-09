@@ -292,3 +292,71 @@ Install the dependencies using:
 
 python -m pip install -r requirements.txt
 
+
+
+\## How to Run
+
+
+
+\### 1. Install dependencies
+
+
+
+```bash
+
+python -m pip install -r requirements.txt
+
+```
+
+
+
+\### 2. Run the introductory demonstration
+
+
+
+```bash
+
+python main.py
+
+```
+
+
+
+\### 3. Generate the oxygen-binding graph
+
+
+
+```bash
+
+python oxygen\_binding\_graph.py
+
+```
+
+
+
+\### 4. Compare oxygen-binding models
+
+
+
+```bash
+
+python binding\_comparison.py
+
+```
+
+
+
+\### 5. Run the exploratory solubility calculation
+
+
+
+```bash
+
+python empirical\_solubility\_model.py
+
+```
+
+
+
+\*\*Note:\*\* Solubility outputs are exploratory calculations, not experimentally validated predictions.
+
