@@ -162,3 +162,43 @@ Sickle-Cell-Computational-Modelling/
 
 &#x20;       └── tests.yml
 
+
+
+\## Scientific Validation Status
+
+
+
+The model currently compares three fibre oxygen-binding assumptions:
+
+\- Measured noncooperative fibre binding
+
+\- MWC fibre binding
+
+\- TTS fibre binding
+
+
+
+The initial reference solubility (0.178375 g/mL) remains provisional.
+
+
+
+The generated curves are model predictions, not experimental measurements.
+
+The model has not yet been scientifically validated against digitised
+
+experimental data from Henry et al. (2020).
+
+
+
+\### Next Validation Steps
+
+1\. Verify the initial reference solubility against the original study.
+
+2\. Obtain reliable experimental data from the authors or published figures.
+
+3\. Compare model predictions with verified measurements.
+
+4\. Calculate MAE and RMSE only after obtaining trustworthy data.
+
+5\. Document assumptions, limitations, and reproducibility.
+
