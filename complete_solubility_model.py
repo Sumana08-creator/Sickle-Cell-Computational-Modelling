@@ -1,219 +1,391 @@
+"""
+HbS Solubility Computational Model
+==================================
+
+Reference:
+Henry et al. (2020), PNAS.
+Allosteric control of hemoglobin S fiber formation by oxygen
+and its relation to the pathophysiology of sickle cell disease.
+
+Implements the integral form of the published solubility equation.
+
+IMPORTANT:
+- The zero-oxygen reference concentration is provisional.
+- Numerical output is not automatically scientifically validated.
+- Compare results with experimental measurements before interpretation.
+"""
+
+import csv
+from pathlib import Path
+
 import numpy as np
-from scipy.integrate import solve_ivp
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
+from scipy.integrate import quad
+from scipy.optimize import brentq
 
 from mwc_binding import mwc_saturation
 from fiber_binding import fiber_saturation
 
 
-# Parameters reported by Henry et al. (2020)
-L = 60500
+# ---------------------------------------------------------
+# Published parameters from Henry et al. (2020)
+# ---------------------------------------------------------
+
+L = 60500.0
 K_T = 0.016
 K_R = 1.47
 K_P = 0.0059
 
-# Concentration parameters
-# Concentration: g/mL
-# Partial specific volume: mL/g
-POLYMER_CONCENTRATION = 0.69
-PARTIAL_SPECIFIC_VOLUME = 0.76
+POLYMER_CONCENTRATION = 0.69       # g/mL
+PARTIAL_SPECIFIC_VOLUME = 0.76     # mL/g
+HARD_SPHERE_VOLUME = 0.79          # mL/g
 
-# PROVISIONAL reference solubility.
-# Verify its source and applicability before interpreting
-# the results as scientifically validated predictions.
-REFERENCE_SOLUBILITY = 0.178375
+# Provisional reference value: source and applicability
+# must be verified against the original experimental data.
+REFERENCE_SOLUBILITY = 0.178375    # g/mL
+
+MAXIMUM_PRESSURE = 100.0           # torr
+NUMBER_OF_POINTS = 101
+
+OUTPUT_DIRECTORY = Path(__file__).resolve().parent
+
+CSV_PATH = OUTPUT_DIRECTORY / "complete_solubility_results.csv"
+GRAPH_PATH = OUTPUT_DIRECTORY / "complete_solubility_curve.png"
 
 
-def activity_log_derivative(concentration):
-    """
-    Calculate d[ln(gamma * concentration)]/d concentration.
+# ---------------------------------------------------------
+# Activity coefficient
+# ---------------------------------------------------------
 
-    Based on the hard-sphere activity-coefficient equation.
-    """
+def activity_coefficient(concentration):
+    """Calculate the hard-sphere activity coefficient."""
 
-    if concentration <= 0:
-        raise ValueError(
-            "Concentration must be positive."
-        )
+    if not 0 < concentration < 1 / PARTIAL_SPECIFIC_VOLUME:
+        raise ValueError("Concentration is outside the valid range.")
 
-    V = 0.79
+    V = HARD_SPHERE_VOLUME
+    c = concentration
 
-    derivative = (
-        8 * V
-        + 30 * V**2 * concentration
-        + 73.5 * V**3 * concentration**2
-        + 141.2 * V**4 * concentration**3
-        + 237 * V**5 * concentration**4
-        + 395.4 * V**6 * concentration**5
+    exponent = (
+        8 * V * c
+        + 15 * V**2 * c**2
+        + 24.5 * V**3 * c**3
+        + 35.3 * V**4 * c**4
+        + 47.4 * V**5 * c**5
+        + 65.9 * V**6 * c**6
     )
 
-    return derivative + 1 / concentration
+    return float(np.exp(exponent))
 
-def solubility_ode(pressure, state):
-    """Differential form of Equation 1 from Henry et al. (2020)."""
 
-    concentration = float(state[0])
+def log_activity(concentration):
+    """Calculate ln(gamma * concentration)."""
 
-    if concentration <= 0:
-        raise ValueError("Solubility must remain positive.")
-
-    free_saturation = mwc_saturation(
-        pressure, L, K_T, K_R
+    return float(
+        np.log(activity_coefficient(concentration))
+        + np.log(concentration)
     )
 
-    fibre_saturation_value = fiber_saturation(
-        pressure, K_P
+
+# ---------------------------------------------------------
+# Oxygen saturation models
+# ---------------------------------------------------------
+
+def free_saturation(pressure):
+    """Fractional oxygen saturation of free HbS tetramers."""
+
+    return float(
+        mwc_saturation(pressure, L, K_T, K_R)
     )
 
-    # Calculate the saturation difference per unit pressure.
-    if pressure < 1e-8:
-        free_initial_slope = (
-            L * K_T + K_R
-        ) / (L + 1)
 
-        saturation_difference_per_pressure = (
-            free_initial_slope - K_P
-        )
-    else:
-        saturation_difference_per_pressure = (
-            free_saturation - fibre_saturation_value
-        ) / pressure
+def polymer_saturation(pressure):
+    """Fractional oxygen saturation of HbS fibres."""
 
-    water_volume_ratio = (
-        (1 / POLYMER_CONCENTRATION - PARTIAL_SPECIFIC_VOLUME)
-        / (1 / concentration - PARTIAL_SPECIFIC_VOLUME)
+    return float(
+        fiber_saturation(pressure, K_P)
     )
 
-    denominator = 1 - water_volume_ratio
+
+# ---------------------------------------------------------
+# Published solubility-equation components
+# ---------------------------------------------------------
+
+def water_volume_ratio(concentration):
+    """Calculate the water-volume ratio in Equation 1."""
+
+    numerator = (
+        1.0 / POLYMER_CONCENTRATION
+        - PARTIAL_SPECIFIC_VOLUME
+    )
+
+    denominator = (
+        1.0 / concentration
+        - PARTIAL_SPECIFIC_VOLUME
+    )
 
     if abs(denominator) < 1e-12:
-        raise ValueError(
-            f"Concentration-dependent denominator approaches zero "
-            f"at pressure {pressure:.4f} torr; "
-            f"concentration {concentration:.6f} g/mL."
-        )
+        raise ValueError("Water-volume denominator approaches zero.")
 
-    right_hand_side = (
-        4 * saturation_difference_per_pressure / denominator
+    return numerator / denominator
+
+
+def equation_integrand(pressure, concentration):
+    """
+    Integrand of the solubility equation.
+
+    Do not divide the saturation difference by pressure.
+    """
+
+    ys = free_saturation(pressure)
+    yp = polymer_saturation(pressure)
+
+    denominator = 1.0 - water_volume_ratio(concentration)
+
+    if abs(denominator) < 1e-10:
+        raise ValueError("Equation denominator approaches zero.")
+
+    return 4.0 * (ys - yp) / denominator
+
+
+# ---------------------------------------------------------
+# Numerical solution
+# ---------------------------------------------------------
+
+def calculate_solubility_at_pressure(pressure):
+    """
+    Calculate the concentration satisfying the integral equation.
+
+    Raises an informative error if no numerical root is found.
+    It never substitutes a fabricated result.
+    """
+
+    if pressure < 0:
+        raise ValueError("Pressure cannot be negative.")
+
+    if REFERENCE_SOLUBILITY <= 0:
+        raise ValueError("Reference solubility must be positive.")
+
+    if pressure == 0:
+        return REFERENCE_SOLUBILITY
+
+    initial_log_activity = log_activity(REFERENCE_SOLUBILITY)
+
+    def residual(concentration):
+        try:
+            integral, _ = quad(
+                lambda p: equation_integrand(p, concentration),
+                0.0,
+                pressure,
+                epsabs=1e-8,
+                epsrel=1e-8,
+                limit=200,
+            )
+
+            return (
+                log_activity(concentration)
+                - initial_log_activity
+                - integral
+            )
+
+        except (ValueError, OverflowError, FloatingPointError):
+            return np.nan
+
+    # Scan for a sign change to identify a candidate root.
+    concentrations = np.linspace(
+        0.001,
+        POLYMER_CONCENTRATION - 0.001,
+        300,
     )
 
-    derivative_factor = activity_log_derivative(concentration)
+    previous_concentration = None
+    previous_residual = None
 
-    d_concentration_d_pressure = (
-        right_hand_side / derivative_factor
+    for concentration in concentrations:
+        concentration = float(concentration)
+        current_residual = residual(concentration)
+
+        if not np.isfinite(current_residual):
+            previous_concentration = None
+            previous_residual = None
+            continue
+
+        if previous_residual is not None:
+            if previous_residual * current_residual < 0:
+                try:
+                    root = brentq(
+                        residual,
+                        previous_concentration,
+                        concentration,
+                        xtol=1e-10,
+                        rtol=1e-10,
+                        maxiter=200,
+                    )
+
+                    return float(root)
+
+                except (ValueError, RuntimeError):
+                    pass
+
+        previous_concentration = concentration
+        previous_residual = current_residual
+
+    raise RuntimeError(
+        f"No valid numerical solution was found at "
+        f"{pressure:.2f} torr. Review the equation, reference "
+        "concentration, and model assumptions. No prediction "
+        "has been fabricated."
     )
 
-    return [d_concentration_d_pressure]
 
 def calculate_solubility_curve(
-    reference_solubility,
-    maximum_pressure=100,
-    number_of_points=101,
+    maximum_pressure=MAXIMUM_PRESSURE,
+    number_of_points=NUMBER_OF_POINTS,
 ):
-    """
-    Calculate HbS solubility across oxygen pressures.
-
-    Returns
-    -------
-    pressures : numpy.ndarray
-        Oxygen pressures in torr.
-
-    solubilities : numpy.ndarray
-        Calculated solubilities in g/mL.
-    """
-
-    if reference_solubility <= 0:
-        raise ValueError(
-            "Reference solubility must be positive."
-        )
+    """Calculate solubility over a range of oxygen pressures."""
 
     if maximum_pressure <= 0:
-        raise ValueError(
-            "Maximum pressure must be positive."
-        )
+        raise ValueError("Maximum pressure must be positive.")
 
     if number_of_points < 2:
-        raise ValueError(
-            "At least two points are required."
-        )
+        raise ValueError("At least two points are required.")
 
     pressures = np.linspace(
-        0,
+        0.0,
         maximum_pressure,
         number_of_points,
     )
 
-    result = solve_ivp(
-        solubility_ode,
-        (0, maximum_pressure),
-        [reference_solubility],
-        t_eval=pressures,
-        rtol=1e-8,
-        atol=1e-10,
+    solubilities = []
+
+    for pressure in pressures:
+        solubility = calculate_solubility_at_pressure(
+            float(pressure)
+        )
+        solubilities.append(solubility)
+
+    return pressures, np.asarray(solubilities)
+
+
+# ---------------------------------------------------------
+# Export results
+# ---------------------------------------------------------
+
+def save_results(pressures, solubilities):
+    """Save calculated results to CSV."""
+
+    with CSV_PATH.open(
+        "w",
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        writer = csv.writer(file)
+
+        writer.writerow([
+            "oxygen_pressure_torr",
+            "free_hbs_saturation",
+            "polymer_saturation",
+            "calculated_solubility_g_per_ml",
+            "reference_value_status",
+        ])
+
+        for pressure, concentration in zip(
+            pressures,
+            solubilities,
+        ):
+            writer.writerow([
+                f"{pressure:.6f}",
+                f"{free_saturation(pressure):.8f}",
+                f"{polymer_saturation(pressure):.8f}",
+                f"{concentration:.8f}",
+                "provisional",
+            ])
+
+
+def save_graph(pressures, solubilities):
+    """Save the calculated solubility curve."""
+
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    ax.plot(
+        pressures,
+        solubilities * 1000,
+        label="Calculated solubility",
     )
 
-    if not result.success:
-        raise RuntimeError(
-            f"Solubility calculation failed: {result.message}"
+    ax.set_title("HbS Solubility vs Oxygen Pressure")
+    ax.set_xlabel("Oxygen pressure (torr)")
+    ax.set_ylabel("Solubility (mg/mL)")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    fig.tight_layout()
+
+    try:
+        fig.savefig(
+            GRAPH_PATH,
+            dpi=300,
+            format="png",
         )
-
-    if not np.all(np.isfinite(result.y[0])):
-        raise RuntimeError(
-            "The calculation produced invalid numerical values."
-        )
-
-    return result.t, result.y[0]
+    finally:
+        plt.close(fig)
 
 
-if __name__ == "__main__":
+# ---------------------------------------------------------
+# Main program
+# ---------------------------------------------------------
 
-    print("Complete HbS Solubility Model")
-    print("=============================")
+def main():
+    print("HbS Solubility Computational Model")
+    print("==================================")
+    print("Reference: Henry et al. (2020), PNAS")
+    print(f"Reference solubility: {REFERENCE_SOLUBILITY:.6f} g/mL")
+    print("Reference status: PROVISIONAL")
     print()
 
-    print(
-        "Reference solubility:",
-        REFERENCE_SOLUBILITY,
-        "g/mL",
-    )
+    try:
+        pressures, solubilities = calculate_solubility_curve()
 
-    print(
-        "WARNING: The reference value is provisional. "
-        "Scientific validation is required."
-    )
+    except (ValueError, RuntimeError, FloatingPointError) as error:
+        print("CALCULATION NOT COMPLETED")
+        print(f"Reason: {error}")
+        print()
+        print(
+            "The model needs further mathematical or scientific "
+            "review. No results have been reported as validated."
+        )
+        return
 
-    print()
-
-    pressures, solubilities = calculate_solubility_curve(
-        REFERENCE_SOLUBILITY
-    )
+    save_results(pressures, solubilities)
+    save_graph(pressures, solubilities)
 
     print("First five calculated points")
     print("----------------------------")
 
-    for pressure, solubility in zip(
+    for pressure, concentration in zip(
         pressures[:5],
         solubilities[:5],
     ):
         print(
             f"Pressure: {pressure:6.2f} torr | "
-            f"Solubility: {solubility:.6f} g/mL"
+            f"Solubility: {concentration:.6f} g/mL"
         )
 
     print()
-
     print(
         "Final calculated solubility:",
         f"{solubilities[-1]:.6f} g/mL",
     )
-
-    print(
-        "Calculated points:",
-        len(solubilities),
-    )
-
+    print(f"Calculated points: {len(solubilities)}")
+    print(f"CSV saved: {CSV_PATH}")
+    print(f"Graph saved: {GRAPH_PATH}")
     print()
-    print("Numerical calculation completed.")
-    print(
-        "Scientific validation against published "
-        "measurements is still required."
-    )
+    print("Scientific validation against experimental data is required.")
+
+
+if __name__ == "__main__":
+    main()

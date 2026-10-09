@@ -1,0 +1,12 @@
+oxygen_saturation_fraction,oxygen_saturation_percent,approx_reference_solubility_mg_per_cc,model_prediction_mg_per_cc,comparison_status
+0.0000,0.00,175.00,NOT_AVAILABLE,Model solver not validated
+0.1000,10.00,195.00,NOT_AVAILABLE,Model solver not validated
+0.2000,20.00,205.00,NOT_AVAILABLE,Model solver not validated
+0.3500,35.00,225.00,NOT_AVAILABLE,Model solver not validated
+0.5000,50.00,250.00,NOT_AVAILABLE,Model solver not validated
+0.6500,65.00,280.00,NOT_AVAILABLE,Model solver not validated
+0.7500,75.00,310.00,NOT_AVAILABLE,Model solver not validated
+0.8500,85.00,355.00,NOT_AVAILABLE,Model solver not validated
+0.9000,90.00,390.00,NOT_AVAILABLE,Model solver not validated
+0.9500,95.00,430.00,NOT_AVAILABLE,Model solver not validated
+0.9800,98.00,475.00,NOT_AVAILABLE,Model solver not validated

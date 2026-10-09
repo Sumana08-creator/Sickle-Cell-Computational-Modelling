@@ -1,0 +1,51 @@
+HbS SOLUBILITY COMPARISON REPORT
+================================
+
+Scientific reference:
+Henry et al. (2020), PNAS.
+Allosteric control of hemoglobin S fiber formation by oxygen
+and its relation to the pathophysiology of sickle cell disease.
+
+PURPOSE
+-------
+Organise approximate solubility values read from Figure 3 for
+future comparison with computational model predictions.
+
+REFERENCE DATA
+--------------
+Number of approximate reference points: 11
+Lowest plotted solubility: 175.00 mg/cc
+Highest plotted solubility: 475.00 mg/cc
+
+The approximate values show increasing HbS solubility as oxygen
+saturation increases, with a steeper rise at high saturation.
+
+IMPORTANT DATA LIMITATION
+-------------------------
+These points were estimated visually from the published figure.
+They are not the original experimental measurements and should
+not be treated as exact observations.
+
+MODEL STATUS
+------------
+The complete solubility solver has not yet generated a valid
+curve across the required pressure range.
+
+No model predictions, prediction errors, goodness-of-fit scores,
+or validation claims are reported in this document.
+
+NEXT SCIENTIFIC STEPS
+---------------------
+1. Confirm the mathematical implementation of Equation 1.
+2. Verify the reference solubility and experimental conditions.
+3. Obtain or digitise the published reference data more accurately.
+4. Generate valid model predictions.
+5. Compare predictions with reference data using suitable error
+   metrics and clearly documented assumptions.
+
+CONCLUSION
+----------
+The approximate reference dataset has been organised successfully.
+The computational solubility model remains unvalidated. Further
+mathematical checks and comparison with published data are needed
+before drawing scientific conclusions.
