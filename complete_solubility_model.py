@@ -2,12 +2,15 @@
 HbS Solubility Computational Model
 Reference: Henry et al. (2020), PNAS.
 
-Uses numerical integration of the differential form of the
-published solubility equation.
+Compares three fibre oxygen-binding assumptions:
+1. Measured noncooperative fibre binding
+2. MWC fibre-binding assumption
+3. TTS fibre-binding model
 
 IMPORTANT:
-The reference concentration is provisional. Numerical output
-does not automatically establish scientific validity.
+The initial reference solubility is provisional.
+Model predictions must be compared with experimental data
+before scientific validation can be claimed.
 """
 
 import csv
@@ -21,38 +24,57 @@ from scipy.integrate import solve_ivp
 
 
 # =========================================================
-# 1. MODEL PARAMETERS
+# 1. PARAMETERS
 # =========================================================
 
+# Free haemoglobin: MWC model
 L = 60500.0
 K_T = 0.016
 K_R = 1.47
+
+# Measured noncooperative fibre binding
 K_P = 0.0059
 
+# TTS fibre-binding parameters from Henry et al. (2020)
+K_t = 0.0036
+K_r = 3.7
+l_T = 840.0
+
+# Concentration and activity parameters
 POLYMER_CONCENTRATION = 0.69       # g/mL
 PARTIAL_SPECIFIC_VOLUME = 0.76     # mL/g
 HARD_SPHERE_VOLUME = 0.79          # mL/g
 
-# PROVISIONAL: verify against the original experimental data.
+# PROVISIONAL: not yet verified against the original data
 REFERENCE_SOLUBILITY = 0.178375    # g/mL
 
 MAXIMUM_PRESSURE = 100.0           # torr
-NUMBER_OF_POINTS = 101
+NUMBER_OF_POINTS = 501
+
+CONCENTRATION_LIMIT = (
+    POLYMER_CONCENTRATION * (1.0 - 1e-5)
+)
 
 OUTPUT_DIR = Path(__file__).resolve().parent
 
-CSV_PATH = OUTPUT_DIR / "complete_solubility_results.csv"
-GRAPH_PATH = OUTPUT_DIR / "complete_solubility_curve.png"
-
-CONCENTRATION_LIMIT = POLYMER_CONCENTRATION * (1 - 1e-5)
+CSV_PATH = OUTPUT_DIR / "solubility_model_comparison.csv"
+GRAPH_PATH = OUTPUT_DIR / "solubility_model_comparison.png"
 
 
 # =========================================================
-# 2. OXYGEN SATURATION MODELS
+# 2. FREE HAEMOGLOBIN OXYGEN SATURATION
 # =========================================================
 
 def free_saturation(pressure):
-    """MWC saturation of free haemoglobin."""
+    """
+    MWC oxygen saturation of free haemoglobin.
+
+    Parameters:
+        pressure: Oxygen pressure in torr.
+
+    Returns:
+        Fractional oxygen saturation.
+    """
 
     p = np.asarray(pressure, dtype=float)
 
@@ -64,15 +86,27 @@ def free_saturation(pressure):
         + K_R * p * r**3
     )
 
-    denominator = L * t**4 + r**4
+    denominator = (
+        L * t**4
+        + r**4
+    )
 
     result = numerator / denominator
 
     return float(result) if result.ndim == 0 else result
 
 
-def polymer_saturation(pressure):
-    """Oxygen saturation of haemoglobin fibres."""
+# =========================================================
+# 3. FIBRE OXYGEN-SATURATION MODELS
+# =========================================================
+
+def measured_fibre_saturation(pressure):
+    """
+    Noncooperative fibre-binding curve.
+
+    Henry et al. (2020):
+        K_P = 0.0059 torr^-1
+    """
 
     p = np.asarray(pressure, dtype=float)
 
@@ -81,8 +115,41 @@ def polymer_saturation(pressure):
     return float(result) if result.ndim == 0 else result
 
 
+def mwc_fibre_saturation(pressure):
+    """
+    MWC comparison: fibre binding assumed to have
+    the same oxygen affinity as the free T state.
+
+    Henry et al. (2020):
+        K_T = 0.016 torr^-1
+    """
+
+    p = np.asarray(pressure, dtype=float)
+
+    result = K_T * p / (1.0 + K_T * p)
+
+    return float(result) if result.ndim == 0 else result
+
+
+def tts_fibre_saturation(pressure):
+    """
+    TTS fibre saturation from Henry et al. (2020), Eq. 6.
+    """
+
+    p = np.asarray(pressure, dtype=float)
+
+    effective_K = (
+        l_T * K_t + K_r
+    ) / (1.0 + l_T)
+
+    result = (
+        effective_K * p
+        / (1.0 + effective_K * p)
+    )
+
+    return float(result) if result.ndim == 0 else result
 # =========================================================
-# 3. ACTIVITY COEFFICIENT DERIVATIVE
+# 4. ACTIVITY-COEFFICIENT DERIVATIVE
 # =========================================================
 
 def log_activity_derivative(concentration):
@@ -90,13 +157,15 @@ def log_activity_derivative(concentration):
     Calculate d[ln(gamma*c)]/dc.
 
     Derived from the hard-sphere activity-coefficient
-    polynomial used in the model.
+    polynomial used in the solubility equation.
     """
 
     c = float(concentration)
 
     if c <= 0:
-        raise ValueError("Concentration must be positive.")
+        raise ValueError(
+            "Concentration must be positive."
+        )
 
     v = HARD_SPHERE_VOLUME
 
@@ -112,11 +181,14 @@ def log_activity_derivative(concentration):
 
 
 # =========================================================
-# 4. WATER-VOLUME RATIO
+# 5. WATER-VOLUME RATIO
 # =========================================================
 
 def water_volume_ratio(concentration):
-    """Calculate the concentration-dependent volume ratio."""
+    """
+    Calculate the concentration-dependent volume ratio
+    appearing in the differential solubility equation.
+    """
 
     numerator = (
         1.0 / POLYMER_CONCENTRATION
@@ -129,7 +201,7 @@ def water_volume_ratio(concentration):
     )
 
     if abs(denominator) < 1e-12:
-        raise ValueError(
+        raise FloatingPointError(
             "Water-volume denominator approaches zero."
         )
 
@@ -137,78 +209,128 @@ def water_volume_ratio(concentration):
 
 
 # =========================================================
-# 5. DIFFERENTIAL EQUATION
+# 6. SOLUBILITY DIFFERENTIAL EQUATION
 # =========================================================
 
-def solubility_ode(pressure, state):
+def make_solubility_ode(fibre_saturation_function):
     """
-    Differential form of the solubility equation:
+    Create the differential equation for a selected
+    fibre oxygen-saturation model.
 
-    d ln(gamma*c)/dp =
-        4*(ys - yp) / [p*(1 - volume_ratio)]
+    Equation:
+        d ln(gamma*c) / dp
+        = 4*(ys - yp) / [p*(1 - volume_ratio)]
 
-    At zero pressure, use the analytical limiting value
-    for (ys - yp)/p.
+    where:
+        ys = free haemoglobin saturation
+        yp = fibre saturation
+
+    The concentration derivative is obtained by dividing
+    by d ln(gamma*c)/dc.
     """
 
-    concentration = float(state[0])
+    def solubility_ode(pressure, state):
 
-    # Prevent intermediate solver evaluations from reaching
-    # the near-singular polymer-concentration boundary.
-    concentration = float(
-        np.clip(
-            concentration,
-            1e-10,
-            CONCENTRATION_LIMIT
-        )
-    )
+        concentration = float(state[0])
 
-    volume_ratio = water_volume_ratio(concentration)
+        if not np.isfinite(concentration):
+            raise FloatingPointError(
+                "Concentration became non-finite."
+            )
 
-    denominator = 1.0 - volume_ratio
-
-    if abs(denominator) < 1e-12:
-        raise FloatingPointError(
-            "The equation denominator approaches zero."
+        # Keep intermediate solver evaluations away
+        # from the singular polymer-concentration boundary.
+        concentration = float(
+            np.clip(
+                concentration,
+                1e-10,
+                CONCENTRATION_LIMIT,
+            )
         )
 
-    if pressure < 1e-7:
-
-        # Analytical limit as oxygen pressure approaches zero.
-        saturation_difference_per_pressure = (
-            (L * K_T + K_R) / (L + 1.0)
-            - K_P
+        volume_ratio = water_volume_ratio(
+            concentration
         )
 
-    else:
+        denominator = 1.0 - volume_ratio
 
-        ys = free_saturation(pressure)
-        yp = polymer_saturation(pressure)
+        if abs(denominator) < 1e-12:
+            raise FloatingPointError(
+                "Equation denominator approaches zero."
+            )
 
-        saturation_difference_per_pressure = (
-            (ys - yp) / pressure
+        if pressure < 1e-7:
+
+            # Analytical pressure-zero limit:
+            # lim(p->0) [ys(p)-yp(p)]/p
+            #
+            # Free MWC saturation slope at zero:
+            # (L*K_T + K_R)/(L+1)
+            #
+            # Fibre saturation slope depends on the model.
+            if fibre_saturation_function is measured_fibre_saturation:
+                fibre_slope = K_P
+
+            elif fibre_saturation_function is mwc_fibre_saturation:
+                fibre_slope = K_T
+
+            elif fibre_saturation_function is tts_fibre_saturation:
+                fibre_slope = (
+                    l_T * K_t + K_r
+                ) / (l_T + 1.0)
+
+            else:
+                raise ValueError(
+                    "Unknown fibre saturation function."
+                )
+
+            saturation_difference_per_pressure = (
+                (L * K_T + K_R) / (L + 1.0)
+                - fibre_slope
+            )
+
+        else:
+
+            ys = free_saturation(pressure)
+
+            yp = fibre_saturation_function(
+                pressure
+            )
+
+            saturation_difference_per_pressure = (
+                (ys - yp) / pressure
+            )
+
+        derivative = (
+            4.0
+            * saturation_difference_per_pressure
+            / (
+                denominator
+                * log_activity_derivative(
+                    concentration
+                )
+            )
         )
 
-    derivative = (
-        4.0 * saturation_difference_per_pressure
-        /
-        (
-            denominator
-            * log_activity_derivative(concentration)
-        )
-    )
+        return [derivative]
 
-    return [derivative]
+    return solubility_ode
 
 
 # =========================================================
-# 6. STOP EVENT
+# 7. CONCENTRATION-LIMIT EVENT
 # =========================================================
 
 def concentration_limit_event(pressure, state):
-    """Stop before reaching the near-singular boundary."""
+    """
+    Stop integration before the concentration reaches
+    the near-singular polymer-concentration boundary.
+    """
 
-    return CONCENTRATION_LIMIT - float(state[0])
+    return (
+        CONCENTRATION_LIMIT
+        - float(state[0])
+    )
 
 
 concentration_limit_event.terminal = True
@@ -216,14 +338,22 @@ concentration_limit_event.direction = -1
 
 
 # =========================================================
-# 7. SOLVE THE MODEL
+# 8. SOLVE ONE MODEL
 # =========================================================
 
-def calculate_solubility_curve(
+def calculate_one_model(
+    fibre_saturation_function,
     maximum_pressure=MAXIMUM_PRESSURE,
     number_of_points=NUMBER_OF_POINTS,
 ):
-    """Numerically integrate the solubility differential equation."""
+    """
+    Calculate one solubility curve.
+
+    Returns:
+        pressures
+        concentrations
+        status
+    """
 
     if maximum_pressure <= 0:
         raise ValueError(
@@ -236,7 +366,8 @@ def calculate_solubility_curve(
         )
 
     if not (
-        0 < REFERENCE_SOLUBILITY < POLYMER_CONCENTRATION
+        0 < REFERENCE_SOLUBILITY
+        < POLYMER_CONCENTRATION
     ):
         raise ValueError(
             "Reference concentration must be positive "
@@ -249,8 +380,12 @@ def calculate_solubility_curve(
         number_of_points,
     )
 
+    ode = make_solubility_ode(
+        fibre_saturation_function
+    )
+
     solution = solve_ivp(
-        fun=solubility_ode,
+        fun=ode,
         t_span=(0.0, maximum_pressure),
         y0=[REFERENCE_SOLUBILITY],
         method="Radau",
@@ -263,7 +398,8 @@ def calculate_solubility_curve(
 
     if not solution.success:
         raise RuntimeError(
-            f"Numerical solver failed: {solution.message}"
+            "Numerical solver failed: "
+            + solution.message
         )
 
     if solution.t.size == 0:
@@ -271,19 +407,19 @@ def calculate_solubility_curve(
             "The solver returned no usable results."
         )
 
-    reached_limit = bool(solution.t_events[0].size)
+    reached_limit = bool(
+        solution.t_events[0].size
+    )
 
     if reached_limit:
         status = (
-            "PARTIAL: calculation stopped because concentration "
-            "approached the model boundary."
+            "PARTIAL: concentration boundary reached."
         )
 
     elif solution.t[-1] < maximum_pressure - 1e-8:
         status = (
-            "PARTIAL: calculation stopped before maximum pressure."
+            "PARTIAL: integration stopped early."
         )
-        reached_limit = True
 
     else:
         status = (
@@ -295,16 +431,71 @@ def calculate_solubility_curve(
         solution.t,
         solution.y[0],
         status,
-        reached_limit,
     )
 
 
 # =========================================================
-# 8. EXPORT CSV
+# 9. CALCULATE ALL THREE CURVES
 # =========================================================
 
-def save_results(pressures, concentrations, status):
-    """Save calculated results to CSV."""
+def calculate_all_models():
+    """
+    Calculate the three fibre-binding model predictions.
+    """
+
+    models = {
+        "Measured fibre binding (Kp=0.0059)":
+            measured_fibre_saturation,
+
+        "MWC fibre binding (KT=0.016)":
+            mwc_fibre_saturation,
+
+        "TTS fibre binding (lT=840)":
+            tts_fibre_saturation,
+    }
+
+    results = {}
+
+    for model_name, saturation_function in models.items():
+
+        print()
+        print("Calculating:", model_name)
+
+        pressures, concentrations, status = (
+            calculate_one_model(
+                saturation_function
+            )
+        )
+
+        results[model_name] = {
+            "pressures": pressures,
+            "concentrations": concentrations,
+            "status": status,
+        }
+
+        print("Status:", status)
+        print(
+            "Last pressure:",
+            f"{pressures[-1]:.3f} torr",
+        )
+        print(
+            "Last solubility:",
+            f"{concentrations[-1]:.6f} g/mL",
+        )
+
+    return results
+
+
+# =========================================================
+# 10. EXPORT COMPARISON CSV
+# =========================================================
+
+def save_comparison_csv(results):
+    """
+    Export calculated model predictions.
+
+    These are model predictions, not measured data.
+    """
 
     with CSV_PATH.open(
         "w",
@@ -315,72 +506,92 @@ def save_results(pressures, concentrations, status):
         writer = csv.writer(file)
 
         writer.writerow([
+            "model",
             "oxygen_pressure_torr",
             "free_hbs_saturation_fraction",
-            "polymer_saturation_fraction",
+            "fibre_saturation_fraction",
             "calculated_solubility_g_per_ml",
+            "calculated_solubility_mg_per_ml",
+            "reference_concentration_g_per_ml",
             "reference_status",
             "calculation_status",
         ])
 
-        for pressure, concentration in zip(
-            pressures,
-            concentrations,
-        ):
+        for model_name, result in results.items():
 
-            writer.writerow([
-                f"{pressure:.6f}",
-                f"{free_saturation(pressure):.8f}",
-                f"{polymer_saturation(pressure):.8f}",
-                f"{concentration:.8f}",
-                "PROVISIONAL",
-                status,
-            ])
+            pressures = result["pressures"]
+            concentrations = result["concentrations"]
+
+            saturation_function = {
+                "Measured fibre binding (Kp=0.0059)":
+                    measured_fibre_saturation,
+
+                "MWC fibre binding (KT=0.016)":
+                    mwc_fibre_saturation,
+
+                "TTS fibre binding (lT=840)":
+                    tts_fibre_saturation,
+            }[model_name]
+
+            for pressure, concentration in zip(
+                pressures,
+                concentrations,
+            ):
+
+                writer.writerow([
+                    model_name,
+                    f"{pressure:.6f}",
+                    f"{free_saturation(pressure):.8f}",
+                    f"{saturation_function(pressure):.8f}",
+                    f"{concentration:.8f}",
+                    f"{concentration * 1000.0:.4f}",
+                    f"{REFERENCE_SOLUBILITY:.6f}",
+                    "PROVISIONAL",
+                    result["status"],
+                ])
 
 
 # =========================================================
-# 9. CREATE GRAPH
+# 11. CREATE GRAPH
 # =========================================================
 
-def save_graph(
-    pressures,
-    concentrations,
-    reached_limit,
-):
-    """Save the calculated solubility curve."""
+def save_comparison_graph(results):
+    """
+    Plot model predictions against free haemoglobin
+    fractional oxygen saturation, as in Figure 3.
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    The curves are predictions, not experimental data.
+    """
 
-    ax.plot(
-        pressures,
-        concentrations * 1000.0,
-        label="Numerical model",
-    )
+    fig, ax = plt.subplots(figsize=(10, 7))
+
+    for model_name, result in results.items():
+
+        pressures = result["pressures"]
+        concentrations = result["concentrations"]
+
+        x_values = free_saturation(pressures)
+
+        ax.plot(
+            x_values,
+            concentrations * 1000.0,
+            label=model_name,
+            linewidth=2,
+        )
 
     ax.set_title(
-        "HbS Solubility vs Oxygen Pressure"
+        "HbS Solubility vs Fractional Oxygen Saturation"
     )
 
-    ax.set_xlabel("Oxygen pressure (torr)")
-    ax.set_ylabel("Solubility (mg/mL)")
+    ax.set_xlabel(
+        "Free haemoglobin fractional oxygen saturation"
+    )
+
+    ax.set_ylabel(
+        "Calculated solubility (mg/mL)"
+    )
 
     ax.grid(True, alpha=0.3)
-
-    if reached_limit:
-
-        ax.set_title(
-            "HbS Solubility vs Oxygen Pressure "
-            "(Calculation Stopped Early)"
-        )
-
-        ax.text(
-            0.02,
-            0.97,
-            "Partial calculation: model boundary approached",
-            transform=ax.transAxes,
-            va="top",
-        )
-
     ax.legend()
     fig.tight_layout()
 
@@ -390,35 +601,42 @@ def save_graph(
             dpi=300,
             format="png",
         )
-
     finally:
         plt.close(fig)
 
 
 # =========================================================
-# 10. MAIN PROGRAM
+# 12. MAIN PROGRAM
 # =========================================================
 
 def main():
 
-    print("=" * 48)
-    print("HbS SOLUBILITY COMPUTATIONAL MODEL")
-    print("=" * 48)
+    print("=" * 65)
+    print("HbS SOLUBILITY MODEL COMPARISON")
+    print("=" * 65)
 
     print("Reference: Henry et al. (2020), PNAS")
     print(
-        "Reference concentration:",
+        "Initial solubility:",
         f"{REFERENCE_SOLUBILITY:.6f} g/mL",
     )
-    print("Reference status: PROVISIONAL")
-    print("Solver: SciPy Radau")
-    print()
+    print("Initial solubility status: PROVISIONAL")
+    print(
+        "Maximum pressure:",
+        f"{MAXIMUM_PRESSURE:.1f} torr",
+    )
+    print(
+        "Output points per model:",
+        NUMBER_OF_POINTS,
+    )
 
     try:
 
-        pressures, concentrations, status, reached_limit = (
-            calculate_solubility_curve()
-        )
+        results = calculate_all_models()
+
+        save_comparison_csv(results)
+
+        save_comparison_graph(results)
 
     except (
         ValueError,
@@ -426,65 +644,33 @@ def main():
         FloatingPointError,
     ) as error:
 
+        print()
         print("CALCULATION FAILED")
-        print(f"Reason: {error}")
+        print("Reason:", error)
         print(
-            "No validated result has been produced."
+            "Do not interpret incomplete output "
+            "as a validated scientific result."
         )
-
         return
 
-    save_results(
-        pressures,
-        concentrations,
-        status,
-    )
+    print()
+    print("=" * 65)
+    print("OUTPUT FILES")
+    print("=" * 65)
 
-    save_graph(
-        pressures,
-        concentrations,
-        reached_limit,
-    )
-
-    print("FIRST FIVE RESULTS")
-    print("-" * 48)
-
-    for pressure, concentration in zip(
-        pressures[:5],
-        concentrations[:5],
-    ):
-
-        print(
-            f"{pressure:7.2f} torr | "
-            f"{concentration:.6f} g/mL | "
-            f"{concentration * 1000:.2f} mg/mL"
-        )
+    print("CSV:", CSV_PATH)
+    print("Graph:", GRAPH_PATH)
 
     print()
-    print(f"Last pressure calculated: {pressures[-1]:.2f} torr")
-
+    print("IMPORTANT:")
     print(
-        "Last calculated solubility:",
-        f"{concentrations[-1]:.6f} g/mL",
+        "All curves are model predictions. "
+        "The initial concentration remains provisional."
     )
-
     print(
-        f"Points calculated: {len(pressures)} "
-        f"of {NUMBER_OF_POINTS}"
-    )
-
-    print(f"CSV saved: {CSV_PATH}")
-    print(f"Graph saved: {GRAPH_PATH}")
-
-    print()
-    print("STATUS:")
-    print(status)
-
-    print()
-    print(
-        "IMPORTANT: Verify the reference concentration and "
-        "compare the model against experimental data before "
-        "drawing scientific conclusions."
+        "No experimental error metric has been calculated "
+        "because verified numerical measurement data "
+        "have not yet been supplied."
     )
 
 
