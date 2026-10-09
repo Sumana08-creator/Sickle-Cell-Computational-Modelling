@@ -1,5 +1,7 @@
 \# Sickle Cell Computational Modelling
 
+
+
 \### Exploring Oxygen-Dependent HbS Polymerisation and the Potential Role of Fetal Haemoglobin
 
 
@@ -8,75 +10,47 @@
 
 
 
-Sickle cell disease is a genetic blood disorder associated with the polymerisation of haemoglobin S (HbS) under conditions of reduced oxygen availability. This polymerisation contributes to red blood cell deformation and the complications associated with the disease.
+Sickle cell disease is a genetic blood disorder associated with the polymerisation of haemoglobin S (HbS), particularly under conditions of reduced oxygen availability.
 
 
 
-This project explores how computational modelling can be used to investigate the relationships between oxygen availability, haemoglobin oxygen binding, HbS fibre formation, and fetal haemoglobin (HbF).
+This project explores how computational modelling can be used to investigate relationships between oxygen pressure, haemoglobin oxygen binding, HbS fibre formation, and solubility.
 
 
 
-Using Python, mathematical models, numerical integration, and scientific visualisation, the project investigates selected relationships described in published research.
+The project uses Python to implement mathematical models, perform numerical calculations, compare calculated results with approximate experimental data, and generate scientific visualisations.
 
 
 
-The long-term objective is to develop a reproducible computational framework that can help explore the physical and biochemical processes involved in HbS polymerisation.
+\*\*Current status:\*\* Educational and exploratory computational research. The solubility model and its reference parameters require further verification and experimental validation.
 
 
 
-\*\*Project status:\*\* Educational and exploratory computational modelling. The current solubility calculations require further scientific verification and validation against published experimental measurements.
+\## 2. Research Objectives
 
 
 
-\## 2. Research Motivation
+The project investigates the following questions:
 
 
 
-HbS polymerisation is influenced by oxygenation and the thermodynamic properties of haemoglobin fibres. Fetal haemoglobin is also relevant to sickle cell research because its presence can influence HbS polymerisation.
+1\. How does oxygen partial pressure influence haemoglobin oxygen saturation?
+
+2\. How does oxygen binding differ between free haemoglobin and haemoglobin fibres?
+
+3\. How can mathematical equations be used to investigate oxygen-dependent HbS solubility?
+
+4\. How can calculated results be compared with published experimental observations?
+
+5\. What additional modelling and validation would be required to investigate the potential influence of fetal haemoglobin (HbF)?
 
 
 
-Understanding these relationships requires consideration of multiple interacting factors rather than treating oxygen availability as an isolated variable.
+\## 3. Scientific Foundation
 
 
 
-Computational modelling provides a way to represent selected relationships mathematically, explore their behaviour under different conditions, and visualise the resulting calculations.
-
-
-
-This project was initiated to explore how published mathematical relationships can be translated into Python implementations and how computational experiments can support further investigation of sickle cell disease.
-
-
-
-\## 3. Research Questions
-
-
-
-The project is organised around the following exploratory questions:
-
-
-
-1\. How does oxygen partial pressure influence haemoglobin oxygen saturation in mathematical binding models?
-
-2\. How does the predicted oxygen-binding behaviour of free haemoglobin compare with that of haemoglobin fibres?
-
-3\. How can mathematical models be used to investigate relationships between oxygen saturation and HbS solubility?
-
-4\. How could fetal haemoglobin be incorporated into a computational framework investigating HbS polymerisation?
-
-5\. What additional experimental data and model validation would be required before these calculations could support reliable scientific predictions?
-
-
-
-These questions guide the current implementations and provide a foundation for further model development.
-
-
-
-\## 4. Scientific Foundation
-
-
-
-The project is informed by the following publication:
+The primary reference informing the project is:
 
 
 
@@ -100,27 +74,23 @@ Henry et al. (2020).
 
 
 
-The publication investigates the relationship between oxygen binding and the thermodynamic stability of HbS fibres. It provides a scientific basis for exploring oxygen-binding behaviour and HbS solubility through mathematical modelling.
+The publication investigates relationships between oxygen binding and the thermodynamic stability of HbS fibres.
 
 
 
-The current project implements selected computational components informed by this research. The implementations should not be interpreted as a complete or independently validated reproduction of every model in the publication.
+This repository implements selected mathematical components informed by the research. It is not a complete or independently validated reproduction of the original study.
 
 
 
-\## 5. Computational Approach
+\## 4. Computational Methodology
 
 
 
-The project uses Python to implement mathematical relationships, perform calculations, export numerical results, and generate graphs.
+\### 4.1 Oxygen Binding by Free Haemoglobin
 
 
 
-\### 5.1 Haemoglobin Oxygen Binding
-
-
-
-The project includes an implementation of the Monod–Wyman–Changeux (MWC) model, which represents cooperative oxygen binding through an allosteric equilibrium between haemoglobin conformational states.
+The project implements the Monod–Wyman–Changeux (MWC) model to represent cooperative oxygen binding by haemoglobin.
 
 
 
@@ -128,15 +98,15 @@ The project includes an implementation of the Monod–Wyman–Changeux (MWC) mod
 
 
 
-The model allows oxygen-binding behaviour to be calculated across a range of oxygen partial pressures.
+The model calculates fractional oxygen saturation across a range of oxygen partial pressures.
 
 
 
-\### 5.2 Haemoglobin Fibre Binding
+\### 4.2 Oxygen Binding by Haemoglobin Fibres
 
 
 
-A separate implementation represents oxygen binding by haemoglobin fibres using a noncooperative binding relationship.
+A separate mathematical relationship represents oxygen binding by haemoglobin fibres.
 
 
 
@@ -144,15 +114,11 @@ A separate implementation represents oxygen binding by haemoglobin fibres using 
 
 
 
-The resulting calculations can be compared with those from the free-haemoglobin model.
+The resulting predictions can be compared with the free-haemoglobin binding model.
 
 
 
-\### 5.3 Model Comparison
-
-
-
-The project combines the oxygen-binding calculations in a visual comparison.
+\### 4.3 Binding Model Comparison
 
 
 
@@ -164,19 +130,11 @@ The project combines the oxygen-binding calculations in a visual comparison.
 
 
 
-The graph presents the calculated oxygen saturation of free haemoglobin and haemoglobin fibres across a range of oxygen partial pressures.
+This component visualises differences between the calculated oxygen-binding behaviour of free haemoglobin and haemoglobin fibres.
 
 
 
-The comparison illustrates differences between the implemented mathematical relationships. Its scientific interpretation depends on the validity of the equations, parameters, and assumptions used.
-
-
-
-\### 5.4 Numerical Integration
-
-
-
-SciPy is used to perform numerical integration in an exploratory investigation of the relationship between oxygen binding and HbS solubility.
+\### 4.4 Numerical Integration
 
 
 
@@ -184,41 +142,153 @@ SciPy is used to perform numerical integration in an exploratory investigation o
 
 
 
-Numerical integration provides a computational method for evaluating an integral when an analytical solution is unavailable or inconvenient.
+SciPy provides numerical integration tools for evaluating mathematical relationships that may not have convenient analytical solutions.
 
 
 
-The successful completion of a numerical calculation establishes that the integration procedure ran for the selected inputs; it does not independently establish that the underlying scientific model is correct.
+Numerical integration can produce a result without establishing that the underlying equation, parameters, or biological assumptions are correct.
 
 
 
-\### 5.5 Exploratory HbS Solubility Calculations
+\### 4.5 HbS Solubility Modelling
 
 
 
-The project contains implementations exploring mathematical relationships between oxygen conditions and HbS solubility.
+\*\*Implementation:\*\* `complete\_solubility\_model.py`
 
 
 
-Relevant files include:
+This component numerically integrates a differential form of the HbS solubility relationship informed by Henry et al. (2020).
 
 
 
-\- `solubility\_model.py`
-
-\- `solubility\_integration.py`
-
-\- `complete\_solubility\_model.py`
-
-\- `empirical\_solubility\_model.py`
+The implementation includes:
 
 
 
-The empirical implementation calculates solubility estimates across 101 fractional oxygen-saturation values at a specified temperature of 25°C.
+\- Published model parameters used by the calculation.
+
+\- Free-haemoglobin oxygen saturation.
+
+\- Haemoglobin fibre oxygen saturation.
+
+\- A hard-sphere activity-coefficient derivative.
+
+\- Numerical integration using SciPy.
+
+\- CSV export of calculated values.
+
+\- Graph generation.
+
+\- Numerical failure and concentration-boundary checks.
 
 
 
 \*\*Generated outputs:\*\*
+
+
+
+\- `complete\_solubility\_results.csv`
+
+\- `complete\_solubility\_curve.png`
+
+
+
+The current implementation uses a provisional zero-oxygen reference concentration of 0.178375 g/mL.
+
+
+
+This reference value and the resulting predictions require verification against appropriate original experimental data.
+
+
+
+A successful numerical integration does not establish scientific validity.
+
+
+
+\### 4.6 Experimental Comparison
+
+
+
+\*\*Implementation:\*\* `experimental\_comparison.py`
+
+
+
+This component compares the calculated solubility results with approximate values digitised from a graph.
+
+
+
+\*\*Input files:\*\*
+
+
+
+\- `figure3\_approximate\_data.csv`
+
+\- `complete\_solubility\_results.csv`
+
+
+
+\*\*Generated outputs:\*\*
+
+
+
+\- `figure3\_experimental\_comparison.png`
+
+\- `experimental\_comparison\_results.csv`
+
+\- `experimental\_comparison\_report.txt`
+
+
+
+The comparison script:
+
+
+
+1\. Loads the experimental and calculated datasets.
+
+2\. Identifies the oxygen-saturation and solubility columns.
+
+3\. Converts solubility values into consistent units.
+
+4\. Interpolates model predictions at experimental oxygen-saturation values.
+
+5\. Calculates differences between predicted and approximate experimental values.
+
+6\. Calculates mean absolute error (MAE).
+
+7\. Calculates root mean square error (RMSE).
+
+8\. Exports the comparison data, graph, and report.
+
+
+
+The comparison is preliminary because the experimental points are approximate digitised estimates rather than verified raw measurements.
+
+
+
+The calculated error metrics describe agreement with these approximate points only.
+
+
+
+They must not be interpreted as definitive evidence of model accuracy.
+
+
+
+\### 4.7 Empirical Solubility Model
+
+
+
+\*\*Implementation:\*\* `empirical\_solubility\_model.py`
+
+
+
+This component explores a separate empirical relationship for calculating solubility estimates across fractional oxygen saturation values.
+
+
+
+\*\*Generated outputs:\*\*
+
+
 
 \- `empirical\_solubility\_results.csv`
 
@@ -226,223 +296,173 @@ The empirical implementation calculates solubility estimates across 101 fraction
 
 
 
-The CSV contains calculated estimates, while the graph visualises the relationship represented by the implemented equation.
+The equation and reference values require verification against their original sources before the estimates can be interpreted scientifically.
 
 
 
-\*\*Important limitation:\*\* The empirical equation and reference values require verification against their original sources. The resulting estimates have not been validated against published experimental measurements and must not be presented as established biological findings.
+\## 5. Current Computational Results
 
 
 
-\## 6. Results and Visualisations
+The current solubility implementation completed numerical integration across 101 pressure points, from 0 to 100 torr.
 
 
 
-The current project generates numerical outputs and graphs that allow the behaviour of the implemented mathematical relationships to be inspected.
+The experimental comparison script also completed successfully using 11 approximate experimental points.
 
 
 
-\### 6.1 Oxygen-Binding Behaviour
+The reported preliminary comparison metrics were:
 
 
 
-\*\*Output:\*\* `oxygen\_binding\_curve.png`
+| Metric | Preliminary result |
 
+|---|---:|
 
+| Approximate experimental points | 11 |
 
-The oxygen-binding graph displays calculated haemoglobin oxygen saturation across a range of oxygen partial pressures.
+| Calculated model points | 101 |
 
+| Points compared | 11 |
 
+| Mean absolute error (MAE) | 8.3544 mg/mL |
 
-The curve provides a visual representation of the behaviour predicted by the oxygen-binding function implemented in the code.
+| Root mean square error (RMSE) | 14.9793 mg/mL |
 
 
 
-\### 6.2 Comparison of Binding Models
+These figures describe the output of the current implementation and comparison procedure.
 
 
 
-\*\*Output:\*\* `binding\_comparison.png`
+They do not establish that the model accurately reproduces experimental biology.
 
 
 
-The comparison graph displays the calculated oxygen-binding behaviour of free haemoglobin and haemoglobin fibres.
+The experimental dataset is approximate, and the zero-oxygen reference concentration remains provisional. Further equation verification, parameter verification, and comparison with reliable experimental measurements are required.
 
 
 
-It provides a visual means of comparing the two mathematical relationships under the parameters specified in the implementation.
+\## 6. Scientific Interpretation
 
 
 
-\### 6.3 HbS Solubility Estimates
+The project demonstrates a computational workflow for translating selected mathematical relationships into Python, solving numerical equations, exporting data, and generating graphs.
 
 
 
-\*\*Output:\*\* `empirical\_solubility\_curve\_new.png`
+The binding models provide a framework for exploring calculated oxygen-saturation behaviour.
 
 
 
-The empirical solubility experiment produces 101 calculated points at 25°C, spanning fractional oxygen saturation values from 0 to 1.
+The solubility implementation extends this workflow to a more complex relationship involving oxygen binding and concentration-dependent activity.
 
 
 
-The current implementation calculates:
+The experimental comparison provides an initial method for examining differences between calculated outputs and approximate observations.
 
 
 
-\- Solubility at 0% fractional oxygen saturation: 0.178375 g/mL.
+However, a graph that visually follows approximate data does not independently establish that the underlying scientific model is correct.
 
-\- Solubility at 100% fractional oxygen saturation: 0.603775 g/mL.
 
 
+The present work should therefore be regarded as exploratory computational modelling rather than a validated predictive model of sickle cell disease.
 
-These values are outputs of the currently implemented equation. They are not experimental measurements, and their scientific accuracy has not been established.
 
 
+\## 7. Limitations
 
-\### 6.4 Numerical Data Export
 
 
+\### 7.1 Reference Concentration
 
-The project exports selected calculated results to CSV files.
 
 
+The zero-oxygen reference concentration is provisional and requires verification against the original experimental source.
 
-\- `experiment\_results.csv`
 
-\- `empirical\_solubility\_results.csv`
 
+\### 7.2 Equation Verification
 
 
-This allows numerical outputs to be inspected separately from the Python scripts and graphs.
 
+The implemented equations must be checked against the original publication, including mathematical notation, units, parameter definitions, and assumptions.
 
 
-The files provide a starting point for subsequent analysis and comparison with appropriate published datasets.
 
+\### 7.3 Approximate Experimental Data
 
 
-\## 7. Scientific Interpretation
 
+The current comparison uses approximate values digitised from a graph. These values may differ from the original experimental measurements.
 
 
-The current implementations demonstrate how mathematical relationships can be translated into computational models and visualised using Python.
 
+\### 7.4 Numerical Stability
 
 
-The oxygen-binding models provide a framework for comparing calculated binding behaviour. The solubility experiments demonstrate a computational workflow involving mathematical functions, numerical calculations, data export, and graphical representation.
 
+The solubility equation can approach a numerical boundary as concentration approaches the polymer concentration. Solver behaviour and sensitivity near this boundary require further investigation.
 
 
-However, generating a curve or obtaining a numerical result is not sufficient to establish a biological conclusion.
 
+\### 7.5 Model Validation
 
 
-In particular, the current solubility calculations should be regarded as exploratory because their equations, reference values, assumptions, and outputs require further verification.
 
+Agreement with a small set of approximate points is insufficient to establish model validity. Reliable experimental measurements and a documented validation procedure are required.
 
 
-The project therefore represents an initial computational investigation rather than a validated predictive model of sickle cell disease.
 
+\### 7.6 Fetal Haemoglobin
 
 
-\## 8. Limitations
 
+Although HbF is part of the research motivation, a quantitatively defined and validated implementation of its influence on HbS polymerisation remains future work.
 
 
-Several limitations remain.
 
+\### 7.7 Clinical Interpretation
 
 
-\### Equation and Parameter Verification
 
+The current calculations do not provide patient-specific predictions, clinical recommendations, or treatment guidance.
 
 
-The equations and parameter values must be checked against the original scientific sources, including their units, assumptions, and experimental conditions.
 
+\## 8. Future Development
 
 
-\### Experimental Validation
 
+Planned research directions include:
 
 
-Calculated outputs must be compared with suitable published experimental measurements before model accuracy can be evaluated.
 
+1\. Verify the mathematical equations against the original publication.
 
+2\. Confirm the reference concentration and all parameter values.
 
-\### Numerical Stability
+3\. Obtain reliable experimental measurements for comparison.
 
+4\. Improve the provenance and reproducibility of the experimental dataset.
 
+5\. Evaluate numerical stability across the intended pressure and concentration ranges.
 
-The solubility implementations require further investigation of numerical stability, parameter sensitivity, and behaviour across the intended range of conditions.
+6\. Perform parameter-sensitivity analysis.
 
+7\. Document model assumptions and units consistently.
 
+8\. Develop and test a quantitative representation of HbF's potential influence on HbS polymerisation.
 
-\### Fetal Haemoglobin Modelling
+9\. Separate exploratory components from components that have been independently validated.
 
+10\. Develop automated tests for mathematical functions, numerical outputs, and data processing.
 
 
-Although HbF is part of the project's research motivation, further work is required to establish and validate a quantitative implementation of its influence on HbS polymerisation.
 
-
-
-\### Scope of Interpretation
-
-
-
-The present results do not establish clinical predictions, patient-specific outcomes, or treatment recommendations.
-
-
-
-\## 9. Future Research Directions
-
-
-
-Future development will focus on:
-
-
-
-1\. Verifying the mathematical equations and parameters against the original publication.
-
-2\. Obtaining suitable published experimental data for model comparison.
-
-3\. Quantifying differences between calculated and experimental values.
-
-4\. Evaluating numerical stability and sensitivity to parameter changes.
-
-5\. Developing a clearly defined and testable representation of the potential influence of HbF on HbS polymerisation.
-
-6\. Improving reproducibility through documented assumptions, parameter sources, and computational experiments.
-
-7\. Separating validated model components from exploratory implementations.
-
-
-
-These steps would help establish whether the framework can progress from educational modelling towards a scientifically evaluated computational model.
-
-
-
-\## 10. Conclusion
-
-
-
-This project explores the use of Python to investigate selected mathematical relationships associated with haemoglobin oxygen binding and HbS polymerisation.
-
-
-
-It brings together oxygen-binding models, numerical integration, exploratory solubility calculations, CSV data export, and scientific visualisation.
-
-
-
-The main contribution at this stage is the development of a computational framework for investigating these relationships and identifying the additional verification and validation required for further scientific work.
-
-
-
-The project provides a foundation for continued exploration of oxygen-dependent HbS polymerisation and the potential role of fetal haemoglobin.
-
-
-
-\## 11. Repository Structure
+\## 9. Repository Structure
 
 
 
@@ -456,43 +476,55 @@ The project provides a foundation for continued exploration of oxygen-dependent 
 
 | `experiment.py` | Exploratory experiment |
 
-| `oxygen\_binding.py` | Oxygen-binding calculations |
-
-| `oxygen\_binding\_graph.py` | Oxygen-binding visualisation |
-
 | `mwc\_binding.py` | MWC oxygen-binding model |
 
 | `fiber\_binding.py` | Haemoglobin fibre-binding model |
 
-| `integrated\_model.py` | Integrated modelling experiment |
+| `oxygen\_binding\_graph.py` | Oxygen-binding visualisation |
 
 | `binding\_comparison.py` | Comparison of oxygen-binding models |
 
-| `solubility\_model.py` | Activity-coefficient calculations |
+| `integrated\_model.py` | Integrated modelling experiment |
+
+| `solubility\_model.py` | Solubility-related calculations |
 
 | `solubility\_integration.py` | Numerical integration experiment |
 
-| `complete\_solubility\_model.py` | Exploratory solubility implementation |
+| `complete\_solubility\_model.py` | Differential-equation solubility implementation |
 
-| `empirical\_solubility\_model.py` | Empirical solubility calculation |
+| `empirical\_solubility\_model.py` | Exploratory empirical solubility calculation |
 
-| `experiment\_results.csv` | Exploratory experiment output |
+| `experimental\_comparison.py` | Comparison of calculated and approximate experimental results |
 
-| `empirical\_solubility\_results.csv` | Calculated solubility estimates |
+| `figure3\_approximate\_data.csv` | Approximate digitised experimental values |
 
-| `research\_data.csv` | Research data template |
+| `complete\_solubility\_results.csv` | Calculated solubility results |
+
+| `complete\_solubility\_curve.png` | Calculated solubility graph |
+
+| `figure3\_experimental\_comparison.png` | Experimental comparison graph |
+
+| `experimental\_comparison\_results.csv` | Point-by-point comparison results |
+
+| `experimental\_comparison\_report.txt` | Comparison metrics and limitations |
 
 | `requirements.txt` | Python package dependencies |
 
 
 
-The PNG files contain graphs generated by the project scripts.
+Other CSV and PNG files in the repository contain outputs from the exploratory experiments.
 
 
 
-\---
+\## 10. Running the Project
 
 
 
-\*This repository is an educational and exploratory computational research project. Its outputs require appropriate scientific verification and validation before being used to support biological conclusions.\*
+Install the required Python dependencies:
+
+
+
+```bash
+
+pip install -r requirements.txt
 
