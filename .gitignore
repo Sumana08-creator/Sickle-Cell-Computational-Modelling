@@ -17,3 +17,10 @@ env/
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Generated model outputs
+solubility_model_comparison.csv
+solubility_model_comparison.png
+exploratory_model_errors.csv
+complete_solubility_results.csv
+complete_solubility_curve.png
