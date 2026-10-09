@@ -1,0 +1,15 @@
+HbS Experimental Comparison Report
+========================================
+
+Reference: Henry et al. (2020), PNAS
+
+Experimental values are approximate digitised estimates, not verified raw measurements.
+The model's zero-oxygen reference concentration is provisional.
+
+Number of compared points: 11
+Mean absolute error: 8.3544 mg/mL
+Root mean square error: 14.9793 mg/mL
+Mean absolute percentage error: 2.22%
+
+INTERPRETATION
+These metrics measure agreement with the approximate digitised values only. They do not prove that the model is scientifically validated.
