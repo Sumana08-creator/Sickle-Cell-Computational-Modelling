@@ -1,0 +1,11 @@
+experiment,oxygen_saturation_percent,hbf_percentage,illustrative_score
+oxygen,100,10,0.0
+oxygen,75,10,0.225
+oxygen,50,10,0.45
+oxygen,25,10,0.675
+oxygen,0,10,0.9
+hbf,50,0,0.5
+hbf,50,10,0.45
+hbf,50,20,0.4
+hbf,50,30,0.35
+hbf,50,50,0.25
