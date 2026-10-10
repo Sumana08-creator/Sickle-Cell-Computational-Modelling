@@ -1,0 +1,10 @@
+model,initial_concentration_g_mL,final_pressure_torr,final_solubility_g_mL,change_from_baseline_percent,status
+Measured fibre binding,0.1605375,100.0,0.5979281444974229,-3.00653490336964,COMPLETED: numerical integration finished; experimental validation is still required.
+Measured fibre binding,0.178375,100.0,0.6164622986731458,0.0,COMPLETED: numerical integration finished; experimental validation is still required.
+Measured fibre binding,0.1962125,100.0,0.6381955864631252,3.5254853113900753,COMPLETED: numerical integration finished; experimental validation is still required.
+MWC fibre binding,0.1605375,100.0,0.48441953578461544,-2.8414059088041843,COMPLETED: numerical integration finished; experimental validation is still required.
+MWC fibre binding,0.178375,100.0,0.49858639919174363,0.0,COMPLETED: numerical integration finished; experimental validation is still required.
+MWC fibre binding,0.1962125,100.0,0.5126246700914733,2.815614489782914,COMPLETED: numerical integration finished; experimental validation is still required.
+TTS fibre binding,0.1605375,100.0,0.5667604933506026,-2.718049463293659,COMPLETED: numerical integration finished; experimental validation is still required.
+TTS fibre binding,0.178375,100.0,0.5825957335597964,0.0,COMPLETED: numerical integration finished; experimental validation is still required.
+TTS fibre binding,0.1962125,100.0,0.5993102040782268,2.868965485946995,COMPLETED: numerical integration finished; experimental validation is still required.
